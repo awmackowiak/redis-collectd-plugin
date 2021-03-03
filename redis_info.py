@@ -45,16 +45,16 @@ def fetch_info(conf):
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         s.connect((conf['host'], conf['port']))
         log_verbose('Connected to Redis at %s:%s' % (conf['host'], conf['port']))
-    except socket.error, e:
+    except socket.error as e:
         collectd.error('redis_info plugin: Error connecting to %s:%d - %r'
                        % (conf['host'], conf['port'], e))
         return None
 
-    fp = s.makefile('r')
+    fp = s.makefile('r', newline='\r\n')
 
     if conf['auth'] is not None:
         log_verbose('Sending auth command')
-        s.sendall('auth %s\r\n' % (conf['auth']))
+        s.sendall(str.encode('auth %s\r\n' % (conf['auth'])))
 
         status_line = fp.readline()
         if not status_line.startswith('+OK'):
@@ -65,7 +65,7 @@ def fetch_info(conf):
             return None
 
     log_verbose('Sending info command')
-    s.sendall('info\r\n')
+    s.sendall(str.encode('info\r\n'))
 
     status_line = fp.readline()
 
@@ -81,7 +81,7 @@ def fetch_info(conf):
 
     # process 'info commandstats'
     log_verbose('Sending info commandstats command')
-    s.sendall('info commandstats\r\n')
+    s.sendall(str.encode('info commandstats\r\n'))
     fp.readline()  # skip first line in the response because it is empty
     status_line = fp.readline()
     log_verbose('Received line: %s' % status_line)
@@ -91,7 +91,7 @@ def fetch_info(conf):
 
     # process 'info server'
     log_verbose('Sending info server command')
-    s.sendall('info server\r\n')
+    s.sendall(str.encode('info server\r\n'))
     fp.readline()  # skip first line in the response because it is empty
     status_line = fp.readline()
     log_verbose('Received line: %s' % status_line)
@@ -101,14 +101,14 @@ def fetch_info(conf):
 
     # process 'cluster info'
     if conf['cluster']:
-      log_verbose('Sending cluster info command')
-      s.sendall('cluster info\r\n')
-      fp.readline()  # skip first line in the response because it is empty
-      status_line = fp.readline()
-      log_verbose('Received line: %s' % status_line)
-      content_length = int(status_line[1:-1])  # status_line looks like: $<content_length>
-      datacluster = fp.read(content_length)  # fetch cluster info to different data buffer
-      log_verbose('Received data: %s' % datacluster)
+        log_verbose('Sending cluster info command')
+        s.sendall(str.encode('cluster info\r\n'))
+        fp.readline()  # skip first line in the response because it is empty
+        status_line = fp.readline()
+        log_verbose('Received line: %s' % status_line)
+        content_length = int(status_line[1:-1])  # status_line looks like: $<content_length>
+        datacluster = fp.read(content_length)  # fetch cluster info to different data buffer
+        log_verbose('Received data: %s' % datacluster)
 
     s.close()
 
@@ -117,21 +117,21 @@ def fetch_info(conf):
     datac_dict = parse_info(datac.split(linesep))
     datas_dict = parse_info(datas.split(linesep))
     if conf['cluster']:
-      datacluster_dict = parse_info(datacluster.split(linesep))
+        datacluster_dict = parse_info(datacluster.split(linesep))
 
     # let us see more raw data just in case
     log_verbose('Data: %s' % len(data_dict))
     log_verbose('Datac: %s' % len(datac_dict))
     log_verbose('Datas: %s' % len(datas_dict))
     if conf['cluster']:
-      log_verbose('Datacluster: %s' % len(datacluster_dict))
+        log_verbose('Datacluster: %s' % len(datacluster_dict))
 
     # merge three data sets into one
     data_full = data_dict.copy()
     data_full.update(datac_dict)
     data_full.update(datas_dict)
     if conf['cluster']:
-      data_full.update(datacluster_dict)
+        data_full.update(datacluster_dict)
 
     log_verbose('Data Full: %s' % len(data_full))
 
@@ -263,7 +263,7 @@ def get_metrics(conf):
     if plugin_instance is None:
         plugin_instance = '{host}:{port}'.format(host=conf['host'], port=conf['port'])
 
-    for keyTuple, val in conf['redis_info'].iteritems():
+    for keyTuple, val in conf['redis_info'].items():
         key, val = keyTuple
 
         if key == 'total_connections_received' and val == 'counter':
